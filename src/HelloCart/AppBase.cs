@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Samples.HelloCart.V2;
 using static System.Console;
 
 namespace Samples.HelloCart;
@@ -10,40 +8,39 @@ public abstract class AppBase
     public IServiceProvider ClientServices { get; protected set; } = null!;
     public virtual IServiceProvider WatchedServices => ClientServices;
 
-    public Product[] ExistingProducts { get; set; } = Array.Empty<Product>();
-    public Cart[] ExistingCarts { get; set; } = Array.Empty<Cart>();
+    //Planning Poker (mod)
+    public User[] ExistingUsers { get; set; } = Array.Empty<User>();
+    public Room[] ExistingRooms { get; set; } = Array.Empty<Room>();
 
     public virtual async Task InitializeAsync(IServiceProvider services)
     {
+        /*
         var dbContextFactory = services.GetService<IDbContextFactory<AppDbContext>>();
         if (dbContextFactory != null) {
             await using var dbContext = await dbContextFactory.CreateDbContextAsync();
             await dbContext.Database.EnsureDeletedAsync();
             await dbContext.Database.EnsureCreatedAsync();
         }
+        */
 
         var commander = services.Commander();
 
-        var pApple = new Product { Id = "apple", Price = 2M };
-        var pBanana = new Product { Id = "banana", Price = 0.5M };
-        var pCarrot = new Product { Id = "carrot", Price = 1M };
-        ExistingProducts = new [] { pApple, pBanana, pCarrot };
-        foreach (var product in ExistingProducts)
-            await commander.Call(new EditCommand<Product>(product));
+        // Setup Players + Rooms
+        var uLuzian = new User { Id = "u:Luzian", Name="Luzian", Estimate= 13 };
+        var uPeter = new User { Id = "u:Peter", Name = "Peter", Estimate = 7 };
+        ExistingUsers = new[] { uLuzian, uPeter };
+        foreach (var user in ExistingUsers)
+            await commander.Call(new EditCommand<User>(user));
 
-        var cart1 = new Cart() { Id = "cart:apple=1,banana=2",
-            Items = ImmutableDictionary<string, decimal>.Empty
-                .Add(pApple.Id, 1)
-                .Add(pBanana.Id, 2)
+        var room1 = new Room() { Id = "room:luzian,peter",
+            Players = ImmutableList<string>.Empty
+                .Add(uLuzian.Id)
+                .Add(uPeter.Id)
         };
-        var cart2 = new Cart() { Id = "cart:banana=1,carrot=1",
-            Items = ImmutableDictionary<string, decimal>.Empty
-                .Add(pBanana.Id, 1)
-                .Add(pCarrot.Id, 1)
-        };
-        ExistingCarts = new [] { cart1, cart2 };
-        foreach (var cart in ExistingCarts)
-            await commander.Call(new EditCommand<Cart>(cart));
+
+        ExistingRooms = new [] { room1 };
+        foreach (var room in ExistingRooms)
+            await commander.Call(new EditCommand<Room>(room));
     }
 
     public virtual async ValueTask DisposeAsync()
@@ -57,18 +54,18 @@ public abstract class AppBase
     public Task Watch(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         var tasks = new List<Task>();
-        foreach (var product in ExistingProducts)
-            tasks.Add(WatchProduct(services, product.Id, cancellationToken));
-        foreach (var cart in ExistingCarts)
-            tasks.Add(WatchCartTotal(services, cart.Id, cancellationToken));
+        foreach (var user in ExistingUsers)
+            tasks.Add(WatchUser(services, user.Id, cancellationToken));
+        foreach (var room in ExistingRooms)
+            tasks.Add(WatchRoomAverage(services, room.Id, cancellationToken));
         return Task.WhenAll(tasks);
     }
 
-    public async Task WatchProduct(
-        IServiceProvider services, string productId, CancellationToken cancellationToken = default)
+    public async Task WatchUser(
+        IServiceProvider services, string userId, CancellationToken cancellationToken = default)
     {
-        var productService = services.GetRequiredService<IProductService>();
-        var computed = await Computed.Capture(() => productService.Get(productId, cancellationToken));
+        var userService = services.GetRequiredService<IUserService>();
+        var computed = await Computed.Capture(() => userService.Get(userId, cancellationToken));
         while (true) {
             WriteLine($"  {computed.Value}");
             await computed.WhenInvalidated(cancellationToken);
@@ -76,13 +73,13 @@ public abstract class AppBase
         }
     }
 
-    public async Task WatchCartTotal(
-        IServiceProvider services, string cartId, CancellationToken cancellationToken = default)
+    public async Task WatchRoomAverage(
+        IServiceProvider services, string roomId, CancellationToken cancellationToken = default)
     {
-        var cartService = services.GetRequiredService<ICartService>();
-        var computed = await Computed.Capture(() => cartService.GetTotal(cartId, cancellationToken));
+        var roomService = services.GetRequiredService<IRoomService>();
+        var computed = await Computed.Capture(() => roomService.GetAverageEstimates(roomId, cancellationToken));
         while (true) {
-            WriteLine($"  {cartId}: total = {computed.Value}");
+            WriteLine($"  {roomId}: average = {computed.Value}");
             await computed.WhenInvalidated(cancellationToken);
             computed = await computed.Update(cancellationToken);
         }

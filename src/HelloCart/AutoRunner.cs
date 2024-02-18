@@ -4,6 +4,7 @@ namespace Samples.HelloCart;
 
 public static class AutoRunner
 {
+    /*
     public static async Task Run(AppBase app, CancellationToken cancellationToken = default)
     {
         var productService = app.ClientServices.GetRequiredService<IProductService>();
@@ -19,5 +20,5 @@ public static class AutoRunner
             await commander.Call(command, cancellationToken);
             await Task.Delay(2000, cancellationToken);
         }
-    }
+    }*/
 }

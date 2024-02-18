@@ -1,9 +1,5 @@
-﻿using Samples.HelloCart;
+using Samples.HelloCart;
 using Samples.HelloCart.V1;
-using Samples.HelloCart.V2;
-using Samples.HelloCart.V3;
-using Samples.HelloCart.V4;
-using Samples.HelloCart.V5;
 using static System.Console;
 
 // Create services
@@ -12,11 +8,6 @@ var isFirstTry = true;
 while(true) {
     WriteLine("Select the implementation to use:");
     WriteLine("  1: ConcurrentDictionary-based");
-    WriteLine("  2: EF Core + Operations Framework (OF)");
-    WriteLine("  3: EF Core + OF + DbEntityResolvers (pipelined fetches)");
-    WriteLine("  4: EF Core + OF + DbEntityResolvers + Client-Server");
-    WriteLine("  5: EF Core + OF + DbEntityResolvers + Client-Server + Multi-Host");
-    // WriteLine("  4: 3 + client-server mode");
     Write("Type 1..5: ");
     var input = isFirstTry
         ? args.SingleOrDefault() ?? ReadLine()
@@ -24,10 +15,6 @@ while(true) {
     input = (input ?? "").Trim();
     app = input switch {
         "1" => new AppV1(),
-        "2" => new AppV2(),
-        "3" => new AppV3(),
-        "4" => new AppV4(),
-        "5" => new AppV5(),
         _ => null,
     };
     if (app != null)
@@ -46,30 +33,30 @@ _ = app.Watch(app.WatchedServices, cts.Token);
 await Task.Delay(700); // Just to make sure watch tasks print whatever they want before our prompt appears
 // await AutoRunner.Run(app);
 
-var productService = app.ClientServices.GetRequiredService<IProductService>();
+var userService = app.ClientServices.GetRequiredService<IUserService>();
 var commander = app.ClientServices.Commander();
 WriteLine();
-WriteLine("Change product price by typing [productId]=[price], e.g. \"apple=0\".");
-WriteLine("See the total of every affected cart changes.");
+WriteLine("Change user Estimate by typing [userId]=[estimate], e.g. \"luzian=0\".");
+WriteLine("See the everage of every affected room changes.");
 while (true) {
     await Task.Delay(500);
     WriteLine();
-    Write("[productId]=[price]: ");
+    Write("[userId]=[estimate]: ");
     try {
         var input = (ReadLine() ?? "").Trim();
         if (input == "")
             break;
         var parts = input.Split("=");
         if (parts.Length != 2)
-            throw new ApplicationException("Invalid price expression.");
+            throw new ApplicationException("Invalid estimate expression.");
 
-        var productId = parts[0].Trim();
-        var price = decimal.Parse(parts[1].Trim());
-        var product = await productService.Get(productId);
-        if (product == null)
-            throw new KeyNotFoundException("Specified product doesn't exist.");
+        var userId = parts[0].Trim();
+        var estimate = int.Parse(parts[1].Trim());
+        var user = await userService.Get(userId);
+        if (user == null)
+            throw new KeyNotFoundException("Specified user doesn't exist.");
 
-        var command = new EditCommand<Product>(product with { Price = price });
+        var command = new EditCommand<Samples.HelloCart.User>(user with { Estimate = estimate });
         await commander.Call(command);
         // You can run absolutely identical action with:
         // await app.ClientServices.Commander().Call(command);
