@@ -48,6 +48,7 @@ public class Startup
         fusion.AddService<WeatherForecastService>();
         fusion.AddService<ChatService>();
         fusion.AddService<ChatBotService>();
+        fusion.AddService<PlanningPokerService>();
         // This is just to make sure ChatBotService.StartAsync is called on startup
         services.AddHostedService(c => c.GetRequiredService<ChatBotService>());
 
