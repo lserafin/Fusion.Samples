@@ -1,0 +1,19 @@
+@page "/room/{RoomId}"
+
+<h3>Room</h3>
+
+<span>
+    RoomID: @if (string.IsNullOrEmpty(RoomId))
+    {
+        @:None
+    }
+    else
+    {
+        @RoomId
+    }
+</span>
+
+@code {
+    [Parameter]
+    public string RoomId { get; set; }
+}

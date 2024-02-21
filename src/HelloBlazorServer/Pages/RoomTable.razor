@@ -1,0 +1,42 @@
+@page "/rooms"
+@inherits ComputedStateComponent<Room[]>
+@inject PlanningPokerService PlanningPokerService
+
+@{
+    var state = State.ValueOrDefault;
+    var error = State.Error;
+}
+
+<h3>RoomTables</h3>
+
+<table class="table table-sm table-striped">
+    <thead>
+        <tr>
+            <th scope="col">Room Name</th>
+            <th scope="col">ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var room in state)
+        {
+            <tr>
+                <td style="width: 15%; max-width: 20%">@room.Name</td>
+                <td style="width: 15%; max-width: 20%">@room.Id</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    protected override async Task OnInitializedAsync()
+        => await State.Update();
+
+    protected override ComputedState<Room[]>.Options GetStateOptions()
+        => new() { InitialValue = Array.Empty<Room>() };
+
+    protected override async Task<Room[]> ComputeState(CancellationToken cancellationToken)
+    {
+        var allRooms = await PlanningPokerService.GetAllRooms();
+        return allRooms.ToArray();
+    }
+}

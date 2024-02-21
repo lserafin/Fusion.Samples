@@ -1,4 +1,4 @@
-﻿@page "/counter"
+@page "/counter"
 @using System.Threading
 @using ActualLab.Fusion.Extensions
 @inherits ComputedStateComponent<string>
@@ -36,4 +36,6 @@
     {
         await CounterService.Increment();
     }
+
+
 }

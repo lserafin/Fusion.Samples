@@ -1,0 +1,30 @@
+@page "/new-game"
+@using System.Threading
+@using ActualLab.Fusion.Extensions
+@inject ICommander Commander
+@inject PlanningPokerService PlanningPokerService
+
+<div class="container mt-5">
+    <h2>Create Game</h2>
+    <form @onsubmit="@Post">
+        <div class="form-group"> 
+            <input @bind-value="@GameName" @bind-value:event="oninput" type="text" class="form-control" id="gameName" name="gameName" placeholder="Enter game's name">
+        </div>
+        <!-- Removed Voting System select component as per instruction -->
+        <button type="submit" class="btn btn-primary">Create game</button>
+    </form>
+</div>
+
+<RoomTable></RoomTable>
+
+@code {
+    private string GameName { get; set; } = string.Empty;   
+
+    private async Task Post()
+    {
+        if (GameName == "")
+            return;
+        await Commander.Call(new Create_NewRoom(GameName));
+        GameName = "";
+    }
+}

@@ -1,45 +1,67 @@
+using Samples.HelloBlazorServer.Models;
+
 namespace Samples.HelloBlazorServer.Services
 {
     public class PlanningPokerService : IComputeService
     {
-        private volatile ImmutableList<(DateTime Time, string Name, int Estimates)> _estimates =
-            ImmutableList<(DateTime, string, int)>.Empty;
+        private readonly IList<Room> _allRooms = new List<Room>();
+        private readonly IList<Player> _allPlayers = new List<Player>();
+        private readonly IDictionary<string, IList<string>> _roomsToPlayersMap = new Dictionary<string, IList<string>>();
 
         private readonly object _lock = new();
 
-        [CommandHandler]
-        public virtual Task PostEstimate(Estimate_Post command, CancellationToken cancellationToken = default)
+        [ComputeMethod]
+        public virtual Task<IList<Room>> GetAllRooms()
         {
+            lock (_lock) {
+                return Task.FromResult(_allRooms);
+            }
+        }
+
+        [ComputeMethod]
+        public virtual Task<List<Player>> GetAllPlayersForARoom(string roomID)
+        {
+            lock (_lock) {
+                var allPlayerIds = _roomsToPlayersMap[roomID];
+                return Task.FromResult(_allPlayers.Where(p => allPlayerIds.Contains(p.Id)).ToList());
+            }
+        }
+
+        [CommandHandler]
+        public virtual Task CreateRoom(Create_NewRoom command, CancellationToken cancellationToken = default)
+        {
+            
             if (Computed.IsInvalidating()) {
-                _ = GetEstimateCount();
-                _ = PseudoGetAnyTail();
+                _ = GetAllRooms();
                 return Task.CompletedTask;
             }
 
-            var (name, estimate) = command;
-            lock (_lock) {
-                _estimates = _estimates.Add((DateTime.Now, name, estimate));
-            }
+            _allRooms.Add(new Room(Guid.NewGuid().ToString(),command.RoomName));
             return Task.CompletedTask;
         }
 
-        [ComputeMethod]
-        public virtual Task<int> GetEstimateCount()
-            => Task.FromResult(_estimates.Count);
-
-        [ComputeMethod]
-        public virtual async Task<(DateTime Time, string Name, int Estimates)[]> GetEstimates(
-            int count, CancellationToken cancellationToken = default)
+        [CommandHandler]
+        public virtual Task CreatePlayerAndJoinRoom(CreatePlayer_And_Join_Room command, CancellationToken cancellationToken = default)
         {
-            // Fake dependency used to invalidate all GetMessages(...) independently on count argument
-            await PseudoGetAnyTail();
-            return _estimates.TakeLast(count).ToArray();
-        }
 
-        [ComputeMethod]
-        protected virtual Task<Unit> PseudoGetAnyTail() => TaskExt.UnitTask;
+            if (Computed.IsInvalidating()) {
+                _ = GetAllPlayersForARoom(command.RoomId);
+                return Task.CompletedTask;
+            }
+
+            var newPlayer = new Player(Guid.NewGuid().ToString(), command.PlayerName);
+            _allPlayers.Add(newPlayer);
+            if(_roomsToPlayersMap.TryGetValue(command.RoomId, out var playersInRoom)) {
+                playersInRoom.Add(newPlayer.Id);
+            } else {
+                _roomsToPlayersMap.Add(command.RoomId, new List<string>() { command.RoomId });
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     // ReSharper disable once InconsistentNaming
-    public record Estimate_Post(string Name, int Estimate) : ICommand<Unit>;
+    public record Create_NewRoom(string RoomName) : ICommand<Unit>;
+    public record CreatePlayer_And_Join_Room(string RoomId,string PlayerName) : ICommand<Unit>;
 }
