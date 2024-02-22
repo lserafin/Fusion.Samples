@@ -19,11 +19,27 @@ namespace Samples.HelloBlazorServer.Services
         }
 
         [ComputeMethod]
+        public virtual Task<Room?> GetRoom(string roomID)
+        {
+            lock (_lock) {
+                return Task.FromResult(_allRooms.Where(r => r.Id == roomID).FirstOrDefault());
+            }
+        }
+
+        [ComputeMethod]
         public virtual Task<List<Player>> GetAllPlayersForARoom(string roomID)
         {
             lock (_lock) {
                 var allPlayerIds = _roomsToPlayersMap[roomID];
                 return Task.FromResult(_allPlayers.Where(p => allPlayerIds.Contains(p.Id)).ToList());
+            }
+        }
+
+        [ComputeMethod]
+        public virtual Task<Player?> GetPlayer(string playerId)
+        {
+            lock (_lock) {
+                return Task.FromResult(_allPlayers.Where(p => p.Id == playerId).FirstOrDefault());
             }
         }
 
@@ -36,7 +52,9 @@ namespace Samples.HelloBlazorServer.Services
                 return Task.CompletedTask;
             }
 
-            _allRooms.Add(new Room(Guid.NewGuid().ToString(),command.RoomName));
+            var newRoom = new Room(Guid.NewGuid().ToString(), command.RoomName);
+            _allRooms.Add(newRoom);
+            _roomsToPlayersMap.Add(newRoom.Id, new List<string>());
             return Task.CompletedTask;
         }
 
@@ -49,12 +67,13 @@ namespace Samples.HelloBlazorServer.Services
                 return Task.CompletedTask;
             }
 
-            var newPlayer = new Player(Guid.NewGuid().ToString(), command.PlayerName);
+            var newPlayer = new Player(command.PlayerID, command.PlayerName);
             _allPlayers.Add(newPlayer);
             if(_roomsToPlayersMap.TryGetValue(command.RoomId, out var playersInRoom)) {
                 playersInRoom.Add(newPlayer.Id);
             } else {
-                _roomsToPlayersMap.Add(command.RoomId, new List<string>() { command.RoomId });
+                //Should not happen - only if the room does not exists
+                //_roomsToPlayersMap.Add(command.RoomId, new List<string>() { command.RoomId });
             }
 
             return Task.CompletedTask;
@@ -63,5 +82,5 @@ namespace Samples.HelloBlazorServer.Services
 
     // ReSharper disable once InconsistentNaming
     public record Create_NewRoom(string RoomName) : ICommand<Unit>;
-    public record CreatePlayer_And_Join_Room(string RoomId,string PlayerName) : ICommand<Unit>;
+    public record CreatePlayer_And_Join_Room(string RoomId,string PlayerName, string PlayerID) : ICommand<Unit>;
 }

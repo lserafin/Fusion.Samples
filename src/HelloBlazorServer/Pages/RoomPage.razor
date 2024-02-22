@@ -1,19 +1,98 @@
 @page "/room/{RoomId}"
+@inherits ComputedStateComponent<(Room?,Player[],Player?)>
+@inject PlanningPokerService PlanningPokerService
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject ICommander Commander
+
+@{
+    var state = State.ValueOrDefault;
+    var error = State.Error;
+    var (currentRoom, players, currentPlayer) = state;
+}
 
 <h3>Room</h3>
 
 <span>
-    RoomID: @if (string.IsNullOrEmpty(RoomId))
+    RoomID: @if (currentRoom == null)
     {
-        @:None
+        @:No room found for this RoomID
     }
     else
     {
-        @RoomId
+        @currentRoom.Name
     }
 </span>
+<br/>
+<span>
+    Player: @if (currentPlayer == null)
+    {
+        @:No Player set yet
+        <span>No Name set please state your Name: </span>
+        <form @onsubmit="@Post">
+            <div class="form-group">
+                <input @bind-value="@PlayerName" @bind-value:event="oninput" type="text" class="form-control" id="playerName" name="playerName" placeholder="Enter your Name">
+            </div>
+            <!-- Removed Voting System select component as per instruction -->
+            <button type="submit" class="btn btn-primary">Join</button>
+        </form>
+    }
+    else
+    {
+        @currentPlayer.Name
+    }
+</span>
+
+<br />
+<span>
+    Number of Players in this Room: @players?.Length
+</span>
+
+<PlayerTable RoomID=@RoomId CurrenPlayerID=@currentPlayer?.Id></PlayerTable>
 
 @code {
     [Parameter]
     public string RoomId { get; set; }
+
+    private string PlayerName { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+        => await State.Update();
+
+    private async Task<string?> GetPlayerIDFromLocalStorage()
+    {
+        return await localStorage.GetItemAsync<string>("playerID");
+    }
+
+    protected override ComputedState<(Room?, Player[], Player?)>.Options GetStateOptions()
+        => new() { InitialValue = (null, Array.Empty<Player>(),null) };
+
+    protected override async Task<(Room?, Player[], Player?)> ComputeState(CancellationToken cancellationToken)
+    {
+        var room = await PlanningPokerService.GetRoom(RoomId);
+        if(room == null) //Room does not exists
+        {
+            return (null, Array.Empty<Player>(),null);
+        } 
+        else
+        {
+            var playerId = await GetPlayerIDFromLocalStorage();
+            var allPlayers = await PlanningPokerService.GetAllPlayersForARoom(RoomId);
+            if (playerId == null)
+            {
+                return (room, allPlayers.ToArray(), null);
+            }
+            var player = await PlanningPokerService.GetPlayer(playerId);
+            return (room, allPlayers.ToArray(), player);
+        }
+    }
+
+    private async Task Post()
+    {
+        if (PlayerName == "")
+            return;
+        var playerId = Guid.NewGuid().ToString();
+        await localStorage.SetItemAsync("playerID", playerId);
+        await Commander.Call(new CreatePlayer_And_Join_Room(RoomId, PlayerName, playerId));
+        PlayerName = "";
+    }
 }

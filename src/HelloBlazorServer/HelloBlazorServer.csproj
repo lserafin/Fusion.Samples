@@ -16,5 +16,6 @@
   <!-- Roslyn generators/analyzers -->
   <ItemGroup>
     <PackageReference Include="ActualLab.Generators" Version="7.0.10" />
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
   </ItemGroup>
 </Project>

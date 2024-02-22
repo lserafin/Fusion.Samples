@@ -1,0 +1,53 @@
+@page "/players"
+@inherits ComputedStateComponent<Player[]>
+@inject PlanningPokerService PlanningPokerService
+
+@{
+    var state = State.ValueOrDefault;
+    var error = State.Error;
+}
+
+<h3>Player Table</h3>
+
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th scope="col">Player Name</th>
+            <th scope="col">ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var player in state)
+        {
+            <tr class="@(CurrenPlayerID == player.Id ? "table-active" : "")">
+                <td style="width: 15%; max-width: 20%">@player.Name</td>
+                <td style="width: 15%; max-width: 20%">@player.Id</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+
+    [Parameter]
+    public string? RoomID { get; set; } = null;
+
+    [Parameter]
+    public string? CurrenPlayerID { get; set; } = null;
+
+    protected override async Task OnInitializedAsync()
+        => await State.Update();
+
+    protected override ComputedState<Player[]>.Options GetStateOptions()
+        => new() { InitialValue = Array.Empty<Player>() };
+
+    protected override async Task<Player[]> ComputeState(CancellationToken cancellationToken)
+    {
+        if(RoomID.IsNullOrEmpty())
+        {
+            return Array.Empty<Player>();
+        }
+        var allPlayers = await PlanningPokerService.GetAllPlayersForARoom(RoomID);
+        return allPlayers.ToArray();
+    }
+}

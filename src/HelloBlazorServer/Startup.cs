@@ -6,6 +6,7 @@ using Samples.HelloBlazorServer.Services;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Fusion.Extensions;
 using ActualLab.Fusion.UI;
+using Blazored.LocalStorage;
 
 namespace Samples.HelloBlazorServer;
 
@@ -51,6 +52,9 @@ public class Startup
         fusion.AddService<PlanningPokerService>();
         // This is just to make sure ChatBotService.StartAsync is called on startup
         services.AddHostedService(c => c.GetRequiredService<ChatBotService>());
+
+        // Add local storage for user Info
+        services.AddBlazoredLocalStorage();
 
         // Default update delay is set to 0.1s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.1));
